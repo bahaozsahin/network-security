@@ -3,16 +3,15 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
 import os
-
+import stat
 import dropbox
-import os
 import unicodedata
 import datetime
 import time
 import six
 import contextlib
 
-authToken = "sl.BEPHphc9T9lKkZtn-WlOF-ywSAJtf1xmUkM52ZGPRIugzLaN3mwuZNwxM-oKd3thFOpkPNA3qwOpE74nMrW9-DqxmsYCh9Us6Vx6A8_FR4QzNgB5S9mCWmirPrhYycl8pET8T1ti"
+authToken = "sl.BEO7w2ExtNwHTEruPlDysQRPacA9poeu5BWPOJ-z8thqW_E5E3JrSPSEc1-k2pS3z0tiJTNj33MFqpxi-WsxAmVfZ3ck4Q7F3eEX3EEdqKMWDKJpY57fWBtwsQoK05aekfBbnTOk"
 # connect
 dbx = dropbox.Dropbox(authToken)
 
@@ -239,7 +238,7 @@ def listSubfoldersDropbox(oncekipath, parent):
             listSubfoldersDropbox(oncekipath, parent_element)
 
     except:
-        print("Alt Dosyası Yok")
+        print("Alt Dosyasi Yok")
 
 
 def onDoubleClick(event):
@@ -261,6 +260,8 @@ def onDoubleClick(event):
     else:
         newpath = item['text']
     print(newpath)
+    global pathForUpload
+    pathForUpload = newpath
 
 
 def onDoubleClickDropbox(event):
@@ -282,6 +283,8 @@ def onDoubleClickDropbox(event):
     else:
         newpath = item['text']
     print(newpath)
+    global pathForDownload
+    pathForDownload = newpath
 
 
 def browse():
@@ -306,12 +309,43 @@ def otoDropbox():
     listSubfoldersDropbox("", root)
 
 
-def printa():
-    print('a')
+def uploadSelected(file_from):
+    file_name = file_from.split("/")
+    file_to = "/Uploads/" + file_name[-1]
+    with open(file_from, 'rb') as f:
+        dbx.files_upload(f.read(), file_to)
+
+    print("Upload successful")
 
 
-def printb():
-    print('b')
+def downloadSelected(file_from):
+    file_to = "C:/Users/DropboxDownloads" + file_from # + file_name[-1]                    dosya
+    print(file_to)
+    file_hierarchy_check = file_to.split('/')                                               #dosyaarray
+    file_hierarchy_check.pop(0) #for skipping the check for C: directory and Users
+    file_hierarchy_check.pop(0)
+    file_hierarchy_check.pop() #skipping the check for the file that will be created
+    current_folder = "C:/Users/"                                                            #konum
+    print(file_hierarchy_check)
+
+    for file in file_hierarchy_check:
+        print(file)
+        file_to_create = current_folder + file
+        print(file_to_create)
+        if not os.path.exists(file_to_create):
+            print("Creating folder according to your Dropbox file hierarchy")
+            os.mkdir(file_to_create)
+        else:
+            print("Folder alredy exists")
+        current_folder = file_to_create + "/"
+    
+    path_download = "C:/Users/DropboxDownloads" + file_from
+    print(file_to)
+    dbx.files_download_to_file(download_path= path_download , path = file_from)
+
+    #data = res.content
+    #print(len(data), 'bytes; md:', md)
+    print('Download successful')
 
 
 scrLogged = Tk()
@@ -322,13 +356,13 @@ scrLogged.config(bg="#447c84")
 treeview = ttk.Treeview(scrLogged)
 treeview.heading("#0", text="Directory")
 treeview.place(x=10, y=150, width=400)
-btnUpload = Button(scrLogged, text='Upload', font='Times 18 bold', command=printa)
+btnUpload = Button(scrLogged, text='Upload', font='Times 18 bold', command=lambda: uploadSelected(pathForUpload))
 btnUpload.place(x=450, y=330)
 
 treeview2 = ttk.Treeview(scrLogged)
 treeview2.heading("#0", text="Directory2")
 treeview2.place(x=10, y=400, width=400)
-btnDownload = Button(scrLogged, text='Download', font='Times 18 bold', command=printb)
+btnDownload = Button(scrLogged, text='Download', font='Times 18 bold', command=lambda: downloadSelected(pathForDownload))
 btnDownload.place(x=450, y=580)
 
 otoDropbox()
