@@ -249,27 +249,18 @@ def listSubfolders(path, parent):
         if os.path.isdir(abspath):
             listSubfolders(abspath, parent_element)
 
+
 def listSubfoldersDropbox(oncekipath,parent):
 
 
 
     try:
         for p in dbx.files_list_folder(oncekipath).entries:
-
-            oncekipathoncesi=oncekipath
-            oncekipath = oncekipath + "/" + p.name
-            print(oncekipath)
+            oncekipath = p.path_lower
             parent_element = treeview2.insert(parent, 'end', text=p.name, values=oncekipath, open=True)
             listSubfoldersDropbox(oncekipath,parent_element)
-            #oncekipath = oncekipath+"/"+p.name
-           # print("Path1:"+path)
-            #oncekipath=oncekipath.replace("\\","/")
-           # print("Path2:"+path)
-            #parent_element = treeview2.insert(parent, 'end', text=p.name,values=oncekipath, open=True)
 
-            #listSubfoldersDropbox(oncekipath, parent_element)
     except:
-        oncekipath=oncekipathoncesi
         print("Alt Dosyası Yok")
 
 
@@ -332,7 +323,7 @@ def browse():
 def otoDropbox():
 
 
-    root = treeview2.insert('', 0, text='', open=True)
+    root = treeview2.insert('', 0, text='Dropbox', open=True)
     treeview2.bind("<Double-Button-1>", onDoubleClickDropbox)
     listSubfoldersDropbox("",root)
 
