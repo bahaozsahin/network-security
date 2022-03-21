@@ -12,15 +12,12 @@ import time
 import six
 import contextlib
 
-
-
 authToken = "sl.BEPHphc9T9lKkZtn-WlOF-ywSAJtf1xmUkM52ZGPRIugzLaN3mwuZNwxM-oKd3thFOpkPNA3qwOpE74nMrW9-DqxmsYCh9Us6Vx6A8_FR4QzNgB5S9mCWmirPrhYycl8pET8T1ti"
 # connect
 dbx = dropbox.Dropbox(authToken)
 
+
 def main():
-
-
     default_path = 'C:/Users/bahao/network/dbxio/'
     null_path = ""
     example_path = "/Deneme"
@@ -38,8 +35,8 @@ def main():
     print("denemedeneme")
     print(localDir)
 
-    #for entry in dbx.files_list_folder('').entries:
-         #print(entry.name)
+    # for entry in dbx.files_list_folder('').entries:
+    # print(entry.name)
 
     for dn, dirs, files in os.walk(localDir):
 
@@ -180,21 +177,7 @@ def stopwatch(message):
         print('Total elapsed time for %s: %.3f' % (message, t1 - t0))
 
 
-
-
-
-
-
-
 main()
-
-
-
-
-
-
-
-
 
 ##########################Login
 scrLogin = Tk()
@@ -234,31 +217,26 @@ scrLogin.mainloop()
 ##########################Logged
 
 def listSubfolders(path, parent):
-
-
     for p in os.listdir(path):
-       # if p == '' or p == NULL or p == "C:/Users/bahao/network/DropboxIO":
+        # if p == '' or p == NULL or p == "C:/Users/bahao/network/DropboxIO":
         #    p = path
 
         abspath = os.path.join(path, p)
-       # print("Path1:"+path)
-        path=path.replace("\\","/")
-       # print("Path2:"+path)
-        parent_element = treeview.insert(parent, 'end', text=p,values=path, open=True)
+        # print("Path1:"+path)
+        path = path.replace("\\", "/")
+        # print("Path2:"+path)
+        parent_element = treeview.insert(parent, 'end', text=p, values=path, open=True)
 
         if os.path.isdir(abspath):
             listSubfolders(abspath, parent_element)
 
 
-def listSubfoldersDropbox(oncekipath,parent):
-
-
-
+def listSubfoldersDropbox(oncekipath, parent):
     try:
         for p in dbx.files_list_folder(oncekipath).entries:
             oncekipath = p.path_lower
             parent_element = treeview2.insert(parent, 'end', text=p.name, values=oncekipath, open=True)
-            listSubfoldersDropbox(oncekipath,parent_element)
+            listSubfoldersDropbox(oncekipath, parent_element)
 
     except:
         print("Alt Dosyası Yok")
@@ -269,19 +247,19 @@ def onDoubleClick(event):
     item = event.widget.item(iid)
     parentDeneme = event.widget.parent(iid)
     values = item['values']
-    #print("you clicked on", item)
-    newpath=""
+    # print("you clicked on", item)
+    newpath = ""
     for values in item['values']:
-        newpath+=values+" "
-    #print("you clicked on", parentDeneme)
-    #print(iid)
+        newpath += values + " "
+    # print("you clicked on", parentDeneme)
+    # print(iid)
 
-    #sondaki boşluğu sil
-    newpath=newpath[:-1]
-    if(newpath!=""):
-        newpath+="/"+item['text']
+    # sondaki boşluğu sil
+    newpath = newpath[:-1]
+    if (newpath != ""):
+        newpath += "/" + item['text']
     else:
-        newpath=item['text']
+        newpath = item['text']
     print(newpath)
 
 
@@ -290,20 +268,21 @@ def onDoubleClickDropbox(event):
     item = event.widget.item(iid)
     parentDeneme = event.widget.parent(iid)
     values = item['values']
-    #print("you clicked on", item)
-    newpath=""
+    # print("you clicked on", item)
+    newpath = ""
     for values in item['values']:
-        newpath+=values+" "
-    #print("you clicked on", parentDeneme)
-    #print(iid)
+        newpath += values + " "
+    # print("you clicked on", parentDeneme)
+    # print(iid)
 
-    #sondaki boşluğu sil
-    newpath=newpath[:-1]
-    if(newpath!=""):
+    # sondaki boşluğu sil
+    newpath = newpath[:-1]
+    if (newpath != ""):
         print("")
     else:
-        newpath=item['text']
+        newpath = item['text']
     print(newpath)
+
 
 def browse():
     # clear the treeview before inserting new
@@ -320,12 +299,19 @@ def browse():
     return (browsedDir)
     # return (root.filename)
 
+
 def otoDropbox():
-
-
     root = treeview2.insert('', 0, text='Dropbox', open=True)
     treeview2.bind("<Double-Button-1>", onDoubleClickDropbox)
-    listSubfoldersDropbox("",root)
+    listSubfoldersDropbox("", root)
+
+
+def printa():
+    print('a')
+
+
+def printb():
+    print('b')
 
 
 scrLogged = Tk()
@@ -335,12 +321,15 @@ scrLogged.config(bg="#447c84")
 
 treeview = ttk.Treeview(scrLogged)
 treeview.heading("#0", text="Directory")
-treeview.place(x=10,y=150,width=400)
+treeview.place(x=10, y=150, width=400)
+btnUpload = Button(scrLogged, text='Upload', font='Times 18 bold', command=printa)
+btnUpload.place(x=450, y=330)
 
 treeview2 = ttk.Treeview(scrLogged)
 treeview2.heading("#0", text="Directory2")
-treeview2.place(x=10,y=400,width=400)
-
+treeview2.place(x=10, y=400, width=400)
+btnDownload = Button(scrLogged, text='Download', font='Times 18 bold', command=printb)
+btnDownload.place(x=450, y=580)
 
 otoDropbox()
 
@@ -360,12 +349,6 @@ for subdir, dirs, files in os.walk(script_directory):
     dir_contents = [subdir, dirs, files]
     break
 
-#treeview.pack()
+# treeview.pack()
 
 scrLogged.mainloop()
-
-
-
-
-
-
