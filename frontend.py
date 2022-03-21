@@ -3,7 +3,6 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
 import os
-from turtle import title
 
 
 ##########################Login
@@ -58,10 +57,11 @@ def listSubfolders(path, parent):
 
 
 def browse():
-    """
-    root = Tk()
-    root.filename = filedialog.askdirectory(initialdir="/", title= "Select file")
-    root.destroy()"""
+    #clear the treeview before inserting new
+    for item in treeview.get_children():
+        treeview.delete(item)
+
+
     browsedDir = filedialog.askdirectory(initialdir="/", title = "Select file")
     root = treeview.insert('', 0, text = browsedDir, open=True)
     
