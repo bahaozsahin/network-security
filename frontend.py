@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
@@ -42,22 +43,27 @@ scrLogin.mainloop()
 ##########################Logged
 
 def listSubfolders(path, parent):
+    print(path)
 
     for p in os.listdir(path):
+        if p == '' or p == NULL or p == "C:/Users/bahao/network/DropboxIO":
+            p = path
+
         abspath = os.path.join(path, p)
+        
         parent_element = treeview.insert(parent, 'end', text=p, open=True)
         if os.path.isdir(abspath):
             listSubfolders(abspath, parent_element)
-    print('listsubfolder sonu')
+   
 
 
-def browse(root):
+def browse():
     """
     root = Tk()
     root.filename = filedialog.askdirectory(initialdir="/", title= "Select file")
     root.destroy()"""
     browsedDir = filedialog.askdirectory(initialdir="/", title = "Select file")
-    treeview.insert('', 0, text = browsedDir, open=True)
+    root = treeview.insert('', 0, text = browsedDir, open=True)
     
     listSubfolders(browsedDir, root)
     #global browsedDirectory 
@@ -73,9 +79,9 @@ scrLogged.config(bg="#447c84")
 
 treeview = ttk.Treeview(scrLogged)
 treeview.heading("#0" ,text="Directory")
-root = treeview.insert('', 'end', open=True)
+#root = treeview.insert('', 'end', open=True)
 
-btnBrowse = Button(scrLogged, text='Browse', font='Times 14 bold', padx=20, pady=40, command=lambda: browse(root)).pack()
+btnBrowse = Button(scrLogged, text='Browse', font='Times 14 bold', padx=20, pady=40, command= browse).pack()
 
 
 
