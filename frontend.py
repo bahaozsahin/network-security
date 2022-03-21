@@ -51,10 +51,18 @@ def listSubfolders(path, parent):
         abspath = os.path.join(path, p)
         
         parent_element = treeview.insert(parent, 'end', text=p, open=True)
+        
         if os.path.isdir(abspath):
             listSubfolders(abspath, parent_element)
    
-
+def onDoubleClick(event):
+    iid = event.widget.focus()
+    item = event.widget.item(iid)
+    parentDeneme = event.widget.parent(iid)
+    values = item['values']
+    print("you clicked on", item)
+    print("you clicked on", parentDeneme)
+    print(iid)
 
 def browse():
     #clear the treeview before inserting new
@@ -64,6 +72,8 @@ def browse():
 
     browsedDir = filedialog.askdirectory(initialdir="/", title = "Select file")
     root = treeview.insert('', 0, text = browsedDir, open=True)
+    treeview.bind("<Double-Button-1>", onDoubleClick)
+
     
     listSubfolders(browsedDir, root)
     #global browsedDirectory 
