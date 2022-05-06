@@ -15,6 +15,9 @@ import time
 import datetime
 
 
+#Takım
+team_member_id=""
+
 TreeviewRootId=""
 TreeviewReset=0
 TreeviewRootIdDropbox=""
@@ -26,14 +29,14 @@ checklistlocal=[]
 checklistfriends=[]
 checklistDropbox=[]
 
-app_key = "ph2b2jh4dqjxnew"
-app_secret = "ixtrd7ua9h8hr3z"
+app_key = "y2cmlfwgnv6hsc5"
+app_secret = "1iaxpkqwt1gxfwu"
 
 # build the authorization URL:
 authorization_url = "https://www.dropbox.com/oauth2/authorize?client_id=%s&response_type=code" % app_key
 authorization_code=""
 tokenid=""
-
+dbx=dropbox.Dropbox
 
 
 
@@ -124,6 +127,12 @@ class CheckboxTreeviewLocalApp(ttk.Treeview):
         original_name = self.item(item, "text")
         if (original_name[0] != "❌"):
             self.item(item, text="❌ " + original_name)
+
+    def sync4(self, item):
+        print(item)
+        original_name = self.item(item, "text")
+        if (original_name[0] != "🗑️"):
+            self.item(item, text="🗑️ " + original_name)
 
     def check_ancestor(self, item):
         """ check the box of item and change the state of the boxes of item's
@@ -557,15 +566,14 @@ def browseLocal():
     browsedDir="C:/Users/DropboxApp"
     treeview.insert('', 0, browsedDir,text=browsedDir,open=True)
 
-    #onDoubleClick() fonksiyonunu ekleme
-    #treeview.bind("<Double-Button-1>", onDoubleClick)
 
     listSubfolders(browsedDir)
     return (browsedDir)
 
 def listSubfolders(path):
 
-    dbx= dropbox.Dropbox(tokenid)
+    #dbx= dropbox.Dropbox(tokenid)
+
 
     treeview=t
     for p in os.listdir(path):
@@ -575,42 +583,75 @@ def listSubfolders(path):
         path = path.replace("\\", "/")
         abspath=abspath.replace("\\", "/")
 
-        fileDropboxPath=abspath[19:]
+        fileDropboxPath = abspath[8:]
+
         fullname = abspath
+        metadata=getMetaData(fileDropboxPath)
+        print(fileDropboxPath)
+        print(metadata)
 
         try:
-            if (os.path.isfile(fullname)):
-                mtime = os.path.getmtime(fullname)
-                mtime_dt = datetime.datetime(*time.gmtime(mtime)[:6])
-                size = os.path.getsize(fullname)
-                metadata = dbx.files_get_metadata(fileDropboxPath)
-                print(mtime_dt)
-                print(size)
-                print(metadata.client_modified)
-                print(metadata.size)
-                if (mtime_dt == metadata.client_modified and size == metadata.size):
-                    print("Senkron" + fileDropboxPath)
+            if (metadata["error"] != ""):
+                #{'error_summary': 'path/not_found/..', 'error': {'.tag': 'path', 'path': {'.tag': 'not_found'}}}
+                metadata2=metadata["error"]
+                metadata3=metadata2["path"]
+                print(metadata)
+                if(metadata3[".tag"]=="not_found"):
+                    sync = 3
 
-                    sync = 1
-                else:
-                    print("Senkron Değil:" + fileDropboxPath)
+        except:
+            try:
+                if (metadata[".tag"] != ""):
+                    type= metadata[".tag"]
+                    if(type=="folder"):
+                         sync=0
+                    if(type == "file"):
+                        mtime = os.path.getmtime(fullname)
 
-                    sync = 2
+                        mtime_dt = datetime.datetime(*time.gmtime(mtime)[:6])
+                        size = os.path.getsize(fullname)
+                        print(mtime_dt)
+                        print(size)
 
-        except Exception as e:
-            print(e)
-            #print("Dosya Dropboxda Bulunmamaktadır 1 :" + fileDropboxPath)
-            sync = 3
+                        metadata_client_modified = metadata["client_modified"]
+                        metadata_size= metadata["size"]
+
+                        print(metadata_client_modified)
+                        print(metadata_size)
+                        if (mtime_dt == metadata_client_modified and size == metadata_size):
+                            print("Senkron" + fileDropboxPath)
+
+                            sync = 1
+                        else:
+                            print("Senkron Değil:" + fileDropboxPath)
+
+                            sync = 2
+                    if (type=="deleted"):
+                        #deleted
+                        sync=4
+
+            except:
+                writeConsoleLogin("Hata access_token Bulunamadı")
+
+
+
+
 
         if(treeview.exists(abspath)==False):
-            treeview.insert(path, "end", abspath, text=p)
+            treeview.insert(path, "end", abspath, text=p,open=True)
 
         if (sync == 1):
             treeview.sync1(fullname)
+            #Var ve Senkron
         if (sync == 2):
             treeview.sync2(fullname)
+            #Var ama Senkron Değil
         if (sync == 3):
             treeview.sync3(fullname)
+            #Bulunmayan
+        if (sync == 4):
+            treeview.sync4(fullname)
+            #Silinmiş
 
         t.pack()
 
@@ -630,31 +671,38 @@ def browseDropbox():
 
     browsedDir="DropboxApp"
 
-    treeview.insert('', 0, "Dropbox",text=browsedDir,open=True)
+    treeview.insert('', 0, "DropboxApp",text=browsedDir,open=True)
 
     #onDoubleClick() fonksiyonunu ekleme
     #treeview.bind("<Double-Button-1>", onDoubleClick)
 
-
-    listSubfoldersDropbox("","Dropbox")
+    #browseShared()
+    listSubfoldersDropbox("/DropboxApp","DropboxApp")
     return (browsedDir)
+
+def browseShared():
+    treeview = tdrop
+    dbx.sharing_list_received_files()
+    treeview.insert('Dropbox', 'end', "", text="browsedDir", open=True)
 
 def listSubfoldersDropbox(path,parent):
 
-    dbx= dropbox.Dropbox(tokenid)
+    #dbx= dropbox.Dropbox(tokenid)
     treeview=tdrop
 
-
+    #dbx.files
     try:
         for p in dbx.files_list_folder(path).entries:
             sync = 0
 
+            fullname = "C:/Users" + p.path_lower
+            #fullname="C:/Users/DropboxApp"+p.path_lower
+            print(os.path.basename(fullname))
 
-            fullname="C:/Users/DropboxApp"+p.path_lower
 
-            if (os.path.isfile(fullname)):
+            if (os.path.exists(fullname)):
                 try:
-                    md = p.path_lower
+
 
                     mtime = os.path.getmtime(fullname)
 
@@ -662,11 +710,9 @@ def listSubfoldersDropbox(path,parent):
 
                     size = os.path.getsize(fullname)
 
-                    print("1")
                     print(p.path_lower)
                     metadata=dbx.files_get_metadata(p.path_lower)
 
-                    print("2")
 
                     if(mtime_dt == metadata.client_modified and size == metadata.size):
                         #print("Senkron"+p.path_lower)
@@ -678,11 +724,13 @@ def listSubfoldersDropbox(path,parent):
                 except Exception as e:
                         #print(e)
                         #print("Dosya  Bulunmamaktadır 1 :" + p.path_lower)
-                        sync=3
-
+                        #Dosya ise ve bulunuyorsa
+                        sync=0
+            else:
+                sync = 3
 
             treeview.insert(parent, 'end', p.path_lower, text=p.name, open=True)
-
+            print(str(sync)+" "+p.path_lower)
             if (sync == 1):
                 treeview.sync1(p.path_lower)
             if (sync == 2):
@@ -694,8 +742,28 @@ def listSubfoldersDropbox(path,parent):
             listSubfoldersDropbox(p.path_lower,p.path_lower)
 
     except Exception as e:
-        print()
+        #print("EXCEPT")
+        print(e)
 
+def shareFile(file_url,friend_mail,custom_message):
+
+    url = "https://api.dropboxapi.com/2/sharing/add_file_member"
+
+    headers = {
+        "Authorization": "Bearer "+tokenid,
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "file": file_url,
+        "members": [{".tag": "email", "email": friend_mail}],
+        "custom_message": custom_message
+    }
+
+    r = requests.post(url, headers=headers, data=json.dumps(data))
+
+    data = r.json()
+    print(data)
 
 def onDoubleClick(event):
     iid = event.widget.focus()
@@ -814,9 +882,12 @@ def ResetDropbox():
 
 def UploadDropbox():
     for files in checklistlocal:
-        print(files[19:])
+        #DropboxApp
+        print(files[8:])
         print("Files: "+files)
-        UploadFile(files,files[19:])
+        UploadFile(files,files[8:])
+        shareFile(files[8:],"dropbox2@haxballplayers.com","deneme132")
+       #shareFile(files[19:],"dropbox2@haxballplayers.com","deneme132")
     for friends in checklistfriends:
         print("Friends: "+friends)
 
@@ -828,8 +899,8 @@ def UploadFile(file_from,file_to):
         dbx=dropbox.Dropbox(tokenid)
 
         mtime = os.path.getmtime(file_from)
-        print("Upload")
-        print(mtime)
+        #print("Upload")
+        #print(mtime)
         with open(file_from, 'rb') as f:
             dbx.files_upload(f.read(), file_to,mode=dropbox.files.WriteMode.overwrite,client_modified=datetime.datetime(*time.gmtime(mtime)[:6]))
 
@@ -839,31 +910,37 @@ def UploadFile(file_from,file_to):
     except Exception as e:
         writeConsoleMain(e)
 
+
 def DownloadFile(file_from):
     dbx=dropbox.Dropbox(tokenid)
-    file_to = "C:/Users/DropboxApp" + file_from  # + file_name[-1]                    dosya
-    print(file_to)
+    #file_to = "C:/Users/DropboxApp" + file_from  # + file_name[-1]
+    file_to = "C:/Users" + file_from  # + file_name[-1]                    dosya
+    #print(file_to)
     file_hierarchy_check = file_to.split('/')  # dosyaarray
     file_hierarchy_check.pop(0)  # for skipping the check for C: directory and Users
     file_hierarchy_check.pop(0)
     file_hierarchy_check.pop()  # skipping the check for the file that will be created
     current_folder = "C:/Users/"  # konum
-    print(file_hierarchy_check)
+    #print(file_hierarchy_check)
 
     for file in file_hierarchy_check:
-        print(file)
+        #print(file)
         file_to_create = current_folder + file
-        print(file_to_create)
+        #print(file_to_create)
         if not os.path.exists(file_to_create):
             print("Creating folder according to your Dropbox file hierarchy")
             os.mkdir(file_to_create)
         else:
             print("Folder alredy exists")
         current_folder = file_to_create + "/"
-
-    path_download = "C:/Users/DropboxApp" + file_from
+    #path_download = "C:/Users/DropboxApp" + file_from
+    path_download = "C:/Users" + file_from
     print(file_to)
+
+
     dbx.files_download_to_file(download_path=path_download, path=file_from)
+
+    #os.utime(file_to, (access_time, modification_time))
     writeConsoleMain('Download successful '+file_to)
     print('Download successful '+file_to)
 
@@ -871,9 +948,29 @@ def DownloadFile(file_from):
 def callback(url):
     webbrowser.open_new(url)
 
+def getMetaData(path):
+    url = "https://api.dropboxapi.com/2/files/get_metadata"
+
+    headers = {
+        "Authorization": "Bearer "+tokenid,
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "path": path,
+        "include_media_info": True,
+        "include_deleted": True,
+        "include_has_explicit_shared_members": True
+    }
+
+    r = requests.post(url, headers=headers, data=json.dumps(data))
+    data = r.json()
+    return data
+
 def Login():
     global  authorization_code
     global tokenid
+    global dbx
     login=0
     authorization_code=LoginAuthorizationCode.get()
     token_url = "https://api.dropboxapi.com/oauth2/token"
@@ -894,12 +991,22 @@ def Login():
             if(data["access_token"] != ""):
                 tokenid = data["access_token"]
                 writeConsoleLogin("Başarıyla Giriş Yapıldı")
+                print(tokenid)
                 time.sleep(1)
                 login=1
         except:
                 writeConsoleLogin("Hata access_token Bulunamadı")
 
     if (login==1):
+        dbx=dropbox.Dropbox(tokenid)
+        #Takım
+        team_member_id=dbx.users_get_current_account().team_member_id
+        headers = {
+            "Content-Type": "application/json",
+            "Dropbox-Api-Select-User": team_member_id
+        }
+        dbx=dropbox.Dropbox(oauth2_access_token=tokenid,headers=headers)
+
         LoginToMainFrame()
 
 root = tk.Tk()
@@ -1103,11 +1210,16 @@ def destroyFriendFrame():
 
 
 if __name__ == '__main__':
-    #os.utime(path_to_file, (access_time, modification_time))
+    #stinfo = os.stat('C:/Users/DropboxApp/aaa/df.py')
+    #print(stinfo)
 
-
-
+    #dbx=dropbox.Dropbox("sl.BHDSYHiasDG2PL9c_d2bW_e2GoEGJaWA_8HFyoc6hm6BN0NsSFWXaHz5Pik4vZ3P8KsqsGu7ofEadG6EKiKdtWRmQQDdf-bHTpHjSWyg2kOcdHqYLvVAVNbv5UnSuNjE541JU4yFDM96")
+    #print(dbx.sharing_list_received_files())
+    #print(dbx.sharing_list_folders())
+    #for p in dbx.sharing_list_received_files().entries:
+    #    print(p)
     createLoginFrame()
+    #dbx.sharing
 
 
 
