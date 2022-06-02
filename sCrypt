@@ -18,12 +18,17 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-import main
+#import main
 
 blocksize = 16
 ##########################################################
 public_key=""
 private_key=""
+mymail=""
+
+def SetMail(mail):
+	global mymail
+	mymail=mail
 
 def Asymmetric_Key_Generating():
 	new_key = RSA.generate(2048)
@@ -73,6 +78,8 @@ def Asymmetric_Encrypt(message,public_key):
 	return encrypted
 def Asymmetric_Decrypt(encrypted,private_key):
 	cipher = PKCS1_OAEP.new(private_key)
+	print(encrypted)
+	encrypted=bytes(encrypted)
 	original_message = cipher.decrypt(encrypted)
 	return original_message
 
@@ -86,7 +93,13 @@ def pad(input_str, blocksize):
 
 def unpad(input_str):
 	#input_str[:-ord(input_str[-1])]
-	return input_str[:-(input_str[-1])]
+	try:
+		original_file=input_str[:-(input_str[-1])]
+
+		console="Dosya Başarıyla Çözüldü" + "\n"
+		return 1,original_file,console
+	except Exception as e:
+		return 0,"",str(e)+"\n"
 
 def cbc_mac_gen(input_str, iv, mac_key, blocksize):
 	input_str=str(input_str)
@@ -111,9 +124,15 @@ def encrypt(input_str, iv, key, blocksize):
 	return ciphertext
 
 def decrypt(ciphertext, iv, key, blocksize):
-	obj1 = AES.new(key, AES.MODE_CBC, iv)
-	plaintext = obj1.decrypt(ciphertext)
-	return unpad(plaintext)
+	try:
+		obj1 = AES.new(key, AES.MODE_CBC, iv)
+		plaintext = obj1.decrypt(ciphertext)
+		success,original_file,console= unpad(plaintext)
+
+
+		return success,original_file,console
+	except Exception as e:
+		return 0, "", str(e) + "\n"
 
 def encrypt_then_mac(path, iv, key, mac_key, blocksize):
 	with open(path, "r") as dosya:
@@ -142,12 +161,22 @@ def auth_check(session_cookie, iv, key, mac_key, blocksize):
 	print("Çıkan ciphertext: " + str(ciphertext))
 	print("Çıkan tag: " + str(tag))
 
+	console=""
+
 	if cbc_mac_gen(ciphertext, iv, mac_key, blocksize) == tag:
 		print ("Authentication Successful")
-		return decrypt(ciphertext, iv, key, blocksize)
+		console+="Authentication Successful"+"\n"
+
+		success,original_file,console2= decrypt(ciphertext, iv, key, blocksize)
+		console+=console2
+		return success, original_file, console
+
+
 	else:
 		print ("Authentication Failed")
-		return 0
+		console += "Authentication Failed" + "\n"
+		return 0, "", console
+
 
 def combine_keys(maillist,auth,iv,key,mac_key,blocksize):
 
@@ -160,7 +189,7 @@ def combine_keys(maillist,auth,iv,key,mac_key,blocksize):
 	count=0
 	for mailadress in maillist:
 		kayitli=0
-		if(mailadress==main.mymail):
+		if(mailadress==mymail):
 			Encrypt_combine_keys = Asymmetric_Encrypt(combine_keys, public_key)
 			person = bytes(mailadress.encode()).hex() + ":::" + Encrypt_combine_keys.hex()
 			kayitli = 1
@@ -196,41 +225,57 @@ def separate_keys(auth,combine_keys):
 	print("Çıkan mac_key: "+str(mac_key))
 
 	print("Çıkan blocksize: "+str(blocksize))
-	return auth_check(auth, iv, key, mac_key, blocksize).decode()
+
+	success,original_file,console=auth_check(auth, iv, key, mac_key, blocksize)
+	original_file=original_file.decode()
+
+	return success,original_file,console
 
 
 def combine_File(auth,All,sign_combine_keys):
-	combine_file = auth + ":::::" + All+":::::"+sign_combine_keys+":::::"+bytes(main.mymail.encode()).hex()
+	combine_file = auth + ":::::" + All+":::::"+sign_combine_keys+":::::"+bytes(mymail.encode()).hex()
 	print("Birleştirilen Dosya Sonuç: "+combine_file)
 	return combine_file
 
 
 def separate_File(combine_file):
+	console=""
 	auth, All,sign_combine_keys,sender= combine_file.split(":::::")
 	persons=All.split("::::")
 	sender=str(bytes.fromhex(sender).decode())
 	sign_combine_keys = bytes.fromhex(sign_combine_keys)
 	Encrypt_combine_keys=""
+
+
+
 	for person in persons:
 
 		person_mail,person_keys=person.split(":::")
-
 		person_mail=str(bytes.fromhex(person_mail).decode())
-		if(person_mail==main.mymail):
+		if(person_mail==mymail):
 			Encrypt_combine_keys=person_keys
+
 
 	#Mail Bulunursa
 	if(Encrypt_combine_keys!=""):
+
 		Encrypt_combine_keys=bytes.fromhex(Encrypt_combine_keys)
 		#Gönderen Bizsek
-		if(sender==main.mymail):
+		if(sender==mymail):
 			combine_keys=Decrypt_Key(Encrypt_combine_keys,private_key)
 			isSignTrue=Asymmetric_Auth(combine_keys,sign_combine_keys,public_key)
 			if(isSignTrue==1):
 				print("Gönderen Doğrulandı")
-				return separate_keys(auth, combine_keys)
+				console += "Gönderen Doğrulandı"+"\n"
+
+				success, original_file, console2 = separate_keys(auth, combine_keys)
+				console += console2
+				return success, original_file, console
+
 			else:
 				print("Gönderen Doğrulanamadı İşlem İptal Edildi")
+				console += "Gönderen Doğrulanamadı İşlem İptal Edildi" + "\n"
+				return 0, "", console
 		#Gönderen Başkası İse
 		else:
 			mail_valid=0
@@ -239,22 +284,34 @@ def separate_File(combine_file):
 				mail_valid = 1
 			except:
 				print("Bu Mail Adresine Ait Kayıt Bulunamadı İşlem İptal Edildi")
+				console += "Bu Mail Adresine Ait Kayıt Bulunamadı İşlem İptal Edildi" + "\n"
+				return 0, "", console
 			if(mail_valid==1):
 				try:
 					combine_keys = Decrypt_Key(Encrypt_combine_keys, private_key)
 					isSignTrue = Asymmetric_Auth(combine_keys, sign_combine_keys, person_public_key)
 					if (isSignTrue == 1):
 						print("Gönderen Doğrulandı")
-						return separate_keys(auth, combine_keys)
+						console += "Gönderen Doğrulandı" + "\n"
+
+						success,original_file,console2=separate_keys(auth, combine_keys)
+						console+=console2
+						return success, original_file, console
+
 					else:
 						print("Gönderen Doğrulanamadı İşlemler İptal Edildi")
+						console += "Gönderen Doğrulanamadı İşlemler İptal Edildi" + "\n"
+						return 0, "", console
 				except Exception as e:
 					print(e)
 					print("Dosya Değiştirilmiş İşlemler İptal Edildi")
+					console += "Dosya Değiştirilmiş İşlemler İptal Edildi" + "\n"
+					return 0, "", console
 
 	else:
 		print("Sizin Adınıza Key Bulunamadı İşlemler İptal Edildi")
-
+		console += "Sizin Adınıza Key Bulunamadı İşlemler İptal Edildi" + "\n"
+		return 0,"",console
 
 
 def Decrypt_Key(Encrypt_combine_keys,private_key):
