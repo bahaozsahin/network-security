@@ -16,6 +16,7 @@ import datetime
 import sCrypt
 from os import urandom
 from csv import reader
+from datetime import datetime as dt
 import csv
 
 #Takım
@@ -625,7 +626,7 @@ def listSubfolders(path):
                 with open('content_hash.csv', 'r') as read_obj:
                     csv_reader = reader(read_obj)
                     for row in csv_reader:
-                        if (row[0] == fullname):
+                        if (row[0].lower() == fullname.lower()):
                             content_hash = row[1]
                             size = str(row[2])
 
@@ -771,13 +772,35 @@ def listSubfoldersDropbox(path,parent):
 
                         mtime_dt = datetime.datetime(*time.gmtime(mtime)[:6])
 
-                        size = os.path.getsize(fullname)
-
+                        size = "Boş"
+                        content_hash = "Boş"
+                        with open('content_hash.csv', 'r') as read_obj:
+                            csv_reader = reader(read_obj)
+                            for row in csv_reader:
+                                if (row[0].lower() == fullname.lower()):
+                                    content_hash = row[1]
+                                    size = str(row[2])
+                        print("DROPBOX-BİLGİ")
+                        print(mtime_dt)
+                        print(size)
+                        print(content_hash)
+                        print(fullname)
                         print(dropboxpath)
                         metadata=dbx.files_get_metadata(dropboxpath)
 
+                        metadata_client_modified = metadata.client_modified
+                        metadata_size = str(metadata.size)
+                        metadata_content_hash = metadata.content_hash
 
-                        if(mtime_dt == metadata.client_modified and size == metadata.size):
+                        print(metadata_client_modified)
+                        print(metadata_size)
+                        print(metadata_content_hash)
+
+
+
+
+                        #if(mtime_dt == metadata.client_modified and size == metadata.size):
+                        if (mtime_dt == metadata_client_modified and size == metadata_size and content_hash == metadata_content_hash):
                             #print("Senkron"+p.path_lower)
                             sync = 1
                         else:
@@ -1012,7 +1035,6 @@ def OldPermission(maillist,shared_folder_id):
     invitees=SharedFolderMembers.invitees
     users=SharedFolderMembers.users
 
-
     #SharedFolderMembers(cursor=NOT_SET, groups=[],
     # invitees=[InviteeMembershipInfo(access_type=AccessLevel('editor', None), initials=NOT_SET, invitee=InviteeInfo('email', 'mert_6198@hotmail.com'), is_inherited=True, permissions=NOT_SET, user=UserInfo(account_id='dbid:AAAp_xxGNqK-OXRg9Y_jM5KHhsPtY83TE94', display_name='', email='mert_6198@hotmail.com', same_team=True, team_member_id='dbmid:AABDwm8okoB87fauAlZ1si4IolRPaV_tF9g'))],
     # users=[UserMembershipInfo(access_type=AccessLevel('editor', None), initials=NOT_SET, is_inherited=True, permissions=NOT_SET, user=UserInfo(account_id='dbid:AAC_I_3x8l6Wxi0VA74fQ_CCUH_58qtXWEY', display_name='Mert Onur', email='mert_1998_61@hotmail.com', same_team=True, team_member_id='dbmid:AACyHY3_isWth_--3M3wi_26IcpVt9DHAGM')), UserMembershipInfo(access_type=AccessLevel('editor', None), initials=NOT_SET, is_inherited=True, permissions=NOT_SET, user=UserInfo(account_id='dbid:AAAxChMn6Y0qorGRi_R4ySYhobeMl5gfr7A', display_name='deneme4 hesap', email='dropbox4@haxballplayers.com', same_team=True, team_member_id='dbmid:AACN37BxLGw2Z6UYA3L8FjLpWDNUdHaEb0A'))])
@@ -1063,9 +1085,10 @@ def UploadDropbox():
             csv_reader = reader(read_obj)
             for row in csv_reader:
                 if(row[0]==friends):
-                    maillist.append(friends)
+                    maillist.append(row[1])
 
     maillist.append(mymail)
+    print(maillist)
 
     for files in checklistlocal:
 
@@ -1115,7 +1138,7 @@ def UploadDropbox():
                         csv_reader = reader(read_obj)
 
                         for row in csv_reader:
-                            if (row[0] == files):
+                            if (row[0].lower() == files.lower()):
                                 update=1
 
                     if(update==1):
@@ -1211,7 +1234,9 @@ def DownloadDropbox():
             f = dbx.files_get_metadata(path=files, include_deleted=True)
             if isinstance(f, dropbox.files.FileMetadata):
                 print("İndirilmek istenen dosya: "+files)
-                DownloadFile(files)
+                file_name=f.name
+                print(file_name)
+                DownloadFile(files,file_name)
         except Exception as e:
             print(e)
 
@@ -1240,16 +1265,20 @@ def UploadFile(original_file,crypted_file_content,file_to):
         return 0
 
 
-def DownloadFile(file_from):
+def DownloadFile(file_from,file_name):
     #dbx=dropbox.Dropbox(tokenid)
 
 
     #file_to = "C:/Users/DropboxApp" + file_from  # + file_name[-1]
     file_to = "C:/Users" + file_from  # + file_name[-1]                    dosya
     print(file_to)
+
     print(file_from)
     file_to=file_to.split('/')
     file_to.pop() #skip same with file name
+
+    file_to_crypted = file_to
+
     path_download=""
     count=0
     for paths in file_to:
@@ -1258,7 +1287,24 @@ def DownloadFile(file_from):
         path_download+=paths
         count += 1
 
-    print("SON indirilme yeri:"+path_download)
+    file_to_crypted.pop()#skip file name
+    crypted_file_name="crypted_"+file_name
+
+    file_to_crypted.append(crypted_file_name)
+
+    path_download_crypted=""
+    count=0
+    for paths in file_to_crypted:
+        if(count!=0):
+            path_download_crypted+="/"
+        path_download_crypted+=paths
+        count += 1
+
+    #print("path_download_crypted:" + path_download_crypted)
+    #print("path_download:" + path_download)
+
+    #print("SON indirilme yeri:"+path_download)
+
 
 
     #print(file_to)
@@ -1285,7 +1331,80 @@ def DownloadFile(file_from):
 
 
 
-    dbx.files_download_to_file(download_path=path_download, path=file_from)
+    dbx.files_download_to_file(download_path=path_download_crypted, path=file_from)
+
+    print("********************************")
+    #şifre çözme başarılı mı?
+    combine_File = open(path_download_crypted).read()
+    print("********************************2")
+    success,original_file,console=sCrypt.separate_File(combine_File)
+    print("********************************3")
+    writeConsoleMain(console)
+
+    if(success==1):
+        print("AFTER SUCCESS")
+        size=""
+        content_hash=""
+        f = dbx.files_get_metadata(path=file_from, include_deleted=True)
+        print(f)
+        if isinstance(f, dropbox.files.FileMetadata):
+            size = f.size
+            content_hash = f.content_hash
+            client_modified = str(f.client_modified)
+            print("indirilen client_modified:"+file_from)
+            print(client_modified)
+            print(f.content_hash)
+        files=path_download
+        print(size)
+        print("content_hash")
+        print(content_hash)
+        # contenthashi kaydetme
+        if (content_hash != "" and size != ""):
+            update = 0
+            # bu path var mı kontrolü
+
+            with open('content_hash.csv', 'r') as read_obj:
+                csv_reader = reader(read_obj)
+
+                for row in csv_reader:
+                    if (row[0].lower() == files.lower()):
+                        update = 1
+
+            if (update == 1):
+                df = pd.read_csv("content_hash.csv")
+                df.loc[df["path"] == files, "content_hash"] = content_hash
+                df.loc[df["path"] == files, "size"] = size
+                print(df["content_hash"])
+                df.to_csv("content_hash.csv", index=False)
+                writeConsoleFriend(files + " Bilgileri Güncellendi")
+
+            if (update == 0):
+                list_data = [files, content_hash, size]
+                with open('content_hash.csv', 'a', newline='') as f_object:
+                    writer_object = writer(f_object)
+                    writer_object.writerow(list_data)
+                    writeConsoleFriend(files + " Bilgileri Eklendi")
+                    f_object.close()
+
+        #çözülmüş dosyayı yazma
+        f = open(path_download, "w")
+        f.write(original_file)
+        f.close()
+
+        dt_object1 = dt.strptime(client_modified, "%Y-%m-%d %H:%M:%S")
+        total = int(time.mktime(dt_object1.timetuple()))+(3*60*60)
+        print("DÜZENLENEN SAAT")
+        print(total)
+        print(datetime.datetime(*time.gmtime(total)[:6]))
+        #tarihini düzelt
+        os.utime(path_download, (total, total))
+
+        if os.path.exists(path_download_crypted):
+            print("ŞİFRELİ DOSYA BAŞARIYLAA SİLİNDİ")
+            os.remove(path_download_crypted)
+        else:
+            print("The file does not exist")
+
 
     #os.utime(file_to, (access_time, modification_time))
     writeConsoleMain('Download successful '+path_download)
@@ -1667,7 +1786,7 @@ def SetMail(mail):
 if __name__ == '__main__':
     #stinfo = os.stat('C:/Users/DropboxApp/aaa/df.py')
     #print(stinfo)
-
+    sCrypt.Asymmetric_Key_Reading()
     #dbx=dropbox.Dropbox("sl.BHK2vLYI7h26x4UmSTDaoDobYUxAshLdIjaIG_2VlRh351ool4ZQOIC3m5u53vOdjB362rP957HU46AepYsav-u2VYcb16kj-GGrrCK9va3mfitQaxXS7AjmMBS2xrnfwoCx9RIMMoLC")
     #print(dbx.sharing_list_received_files())
     #print(dbx.sharing_list_folders())
@@ -1720,6 +1839,8 @@ if __name__ == '__main__':
     #    print("Sonuç:" + sCrypt.separate_File(combine_File))
     #except:
      #   print("Hata !")
+
+
 
 
 
