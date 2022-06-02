@@ -15,10 +15,12 @@ import time
 import datetime
 import sCrypt
 from os import urandom
+from csv import reader
+import csv
 
 #Takım
 team_member_id=""
-mymail="mert_6198@hotmail.com"
+mymail=""
 TreeviewRootId=""
 TreeviewReset=0
 TreeviewRootIdDropbox=""
@@ -617,20 +619,39 @@ def listSubfolders(path):
                 mtime = os.path.getmtime(fullname)
 
                 mtime_dt = datetime.datetime(*time.gmtime(mtime)[:6])
-                size = os.path.getsize(fullname)
+                #size = os.path.getsize(fullname)
+                size="Boş"
+                content_hash="Boş"
+                with open('content_hash.csv', 'r') as read_obj:
+                    csv_reader = reader(read_obj)
+                    for row in csv_reader:
+                        if (row[0] == fullname):
+                            content_hash = row[1]
+                            size = str(row[2])
+
+
+
                 print(mtime_dt)
                 print(size)
-
+                print(content_hash)
                 metadata_client_modified = f.client_modified
-                metadata_size = f.size
+                metadata_size = str(f.size)
+                metadata_content_hash = f.content_hash
 
                 print(metadata_client_modified)
                 print(metadata_size)
-                if (mtime_dt == metadata_client_modified and size == metadata_size):
+                print(metadata_content_hash)
+                if (mtime_dt == metadata_client_modified and size == metadata_size and content_hash==metadata_content_hash):
                     print("Senkron" + fileDropboxPath)
 
                     sync = 1
                 else:
+                    if(mtime_dt != metadata_client_modified):
+                        print("mtime_dt Eşit Değil")
+                    if (size != metadata_size):
+                        print("size Eşit Değil")
+                    if (content_hash!=metadata_content_hash):
+                        print("content_hash Eşit Değil")
                     print("Senkron Değil:" + fileDropboxPath)
 
                     sync = 2
@@ -809,26 +830,53 @@ def shareFile(file_url,friend_mail,custom_message):
     data = r.json()
     print(data)
 
-def shareFolder(file_url,mail):
-    folderid=getFolderId(file_url)
+def shareFolder(mail,folderid):
+
     url = "https://api.dropboxapi.com/2/sharing/add_folder_member"
 
     headers = {
         "Authorization": "Bearer "+tokenid,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Dropbox-Api-Select-User": team_member_id
     }
 
     data = {
         "shared_folder_id": folderid,
-        "members": [{"member":{".tag":"email","email":mail},"access_level":{".tag":"owner"}}]
+        "members": [{"member":{".tag":"email","email":mail},"access_level":{".tag":"editor"}}]
+    }
+
+    r = requests.post(url, headers=headers, data=json.dumps(data))
+    print(r)
+    data = r.json()
+    print(data)
+
+def unshareFolder(mail,folderid):
+
+
+
+    url = "https://api.dropboxapi.com/2/sharing/remove_folder_member"
+
+    headers = {
+        "Authorization": "Bearer "+tokenid,
+        "Content-Type": "application/json",
+        "Dropbox-Api-Select-User": team_member_id
+    }
+
+    data = {
+        "shared_folder_id": folderid,
+        "member": {".tag": "email", "email": mail},
+        "leave_a_copy": False
     }
 
     r = requests.post(url, headers=headers, data=json.dumps(data))
 
+
+    print(r)
     data = r.json()
     print(data)
 
-def getFolderId(file_url):
+
+def getF_MetaData(file_url):
     a=dbx.files_get_metadata(path=file_url)
     print(a)
 
@@ -895,9 +943,14 @@ def add_Friends():
     name=FriendName.get()
     mail = FriendMail.get()
     publickey = FriendPublicKey.get()
+    publickey=bytes(publickey.encode())
+
     print(name)
     if(name!="" and mail!="" and publickey!=""):
         list_data=[name,mail,publickey]
+        fd = open(mail+".pem", "wb")
+        fd.write(publickey)
+        fd.close()
         with open('friendlist.csv', 'a', newline='') as f_object:
             writer_object = writer(f_object)
             writer_object.writerow(list_data)
@@ -950,7 +1003,70 @@ def ResetLocalDropbox():
 def ResetDropbox():
     browseDropbox()
 
+def OldPermission(maillist,shared_folder_id):
+    dropboxapp = dbx.files_get_metadata(path="/dropboxapp", include_deleted=True)
+    if isinstance(dropboxapp, dropbox.files.FolderMetadata):
+        print(dropboxapp.shared_folder_id)
+        dropboxapp_shared_folder_id = dropboxapp.shared_folder_id
+    SharedFolderMembers=dbx.sharing_list_folder_members(shared_folder_id=dropboxapp_shared_folder_id)
+    invitees=SharedFolderMembers.invitees
+    users=SharedFolderMembers.users
+
+
+    #SharedFolderMembers(cursor=NOT_SET, groups=[],
+    # invitees=[InviteeMembershipInfo(access_type=AccessLevel('editor', None), initials=NOT_SET, invitee=InviteeInfo('email', 'mert_6198@hotmail.com'), is_inherited=True, permissions=NOT_SET, user=UserInfo(account_id='dbid:AAAp_xxGNqK-OXRg9Y_jM5KHhsPtY83TE94', display_name='', email='mert_6198@hotmail.com', same_team=True, team_member_id='dbmid:AABDwm8okoB87fauAlZ1si4IolRPaV_tF9g'))],
+    # users=[UserMembershipInfo(access_type=AccessLevel('editor', None), initials=NOT_SET, is_inherited=True, permissions=NOT_SET, user=UserInfo(account_id='dbid:AAC_I_3x8l6Wxi0VA74fQ_CCUH_58qtXWEY', display_name='Mert Onur', email='mert_1998_61@hotmail.com', same_team=True, team_member_id='dbmid:AACyHY3_isWth_--3M3wi_26IcpVt9DHAGM')), UserMembershipInfo(access_type=AccessLevel('editor', None), initials=NOT_SET, is_inherited=True, permissions=NOT_SET, user=UserInfo(account_id='dbid:AAAxChMn6Y0qorGRi_R4ySYhobeMl5gfr7A', display_name='deneme4 hesap', email='dropbox4@haxballplayers.com', same_team=True, team_member_id='dbmid:AACN37BxLGw2Z6UYA3L8FjLpWDNUdHaEb0A'))])
+
+    #print(dropbox.DropboxTeam(tokenid).team_members_list())
+    maillist_old_permission=[]
+    for member in invitees:
+        member=member.user
+        member_mail=member.email
+        if(member_mail!=mymail):
+            maillist_old_permission.append(member_mail)
+
+    for member in users:
+        member = member.user
+        member_mail = member.email
+        if (member_mail != mymail):
+            maillist_old_permission.append(member_mail)
+
+
+    #for mail in maillist_old_permission:
+    #    unshareFolder(mail,dropboxapp_shared_folder_id)
+
+
+    print(dbx.sharing_list_folder_members(shared_folder_id=shared_folder_id))
+
+    for mail in maillist_old_permission:
+        unshareFolder(mail, shared_folder_id)
+
+
+
+    for mail in maillist:
+        shareFolder(mail,shared_folder_id)
+
+    #for mail in maillist_old_permission:
+    #   shareFolder(mail,dropboxapp_shared_folder_id)
+
+
+
+
 def UploadDropbox():
+
+
+    maillist=[]
+    for friends in checklistfriends:
+        print("Friends: "+friends)
+
+        with open('friendlist.csv', 'r') as read_obj:
+            csv_reader = reader(read_obj)
+            for row in csv_reader:
+                if(row[0]==friends):
+                    maillist.append(friends)
+
+    maillist.append(mymail)
+
     for files in checklistlocal:
 
         if os.path.isfile(files):
@@ -962,13 +1078,128 @@ def UploadDropbox():
             print(file_folder)
             print(file_with_folder)
             print("Files: "+files)
-            UploadFile(files,file_with_folder)
-            getFolderId(file_folder)
+
+            sCrypt.Asymmetric_Key_Reading()
+            key = urandom(16)
+            iv = urandom(16)
+            mac_key = urandom(16)
+            auth = sCrypt.encrypt_then_mac(files, iv, key, mac_key, 16)
+            print("Auth:" + str(auth))
+            crypted_file_content = sCrypt.combine_keys(maillist,auth, iv, key, mac_key, sCrypt.blocksize)
+            print("Gönderildi1")
+
+            if(UploadFile(files,crypted_file_content,file_with_folder)==1):
+                print("Gönderildi2")
+                content_hash=""
+                size=""
+                metafolder=getF_MetaData(file_folder)
+
+                f = dbx.files_get_metadata(path=file_with_folder, include_deleted=True)
+                print(f)
+                if isinstance(f, dropbox.files.FileMetadata):
+                    print("girdi")
+                    size = f.size
+                    content_hash = f.content_hash
+                    print(f.content_hash)
+                #metafile = metafile.FileMetadata
+
+                print(size)
+                print("content_hash")
+                print(content_hash)
+                #contenthashi kaydetme
+                if (content_hash != "" and size != ""):
+                    update=0
+                    # bu path var mı kontrolü
+
+                    with open('content_hash.csv', 'r') as read_obj:
+                        csv_reader = reader(read_obj)
+
+                        for row in csv_reader:
+                            if (row[0] == files):
+                                update=1
+
+                    if(update==1):
+                        df = pd.read_csv("content_hash.csv")
+                        df.loc[df["path"] == files, "content_hash"] = content_hash
+                        df.loc[df["path"] == files, "size"] = size
+                        print(df["content_hash"])
+                        df.to_csv("content_hash.csv", index=False)
+                        writeConsoleFriend(files + " Bilgileri Güncellendi")
+
+                    if(update==0):
+                        list_data = [files, content_hash, size]
+                        with open('content_hash.csv', 'a', newline='') as f_object:
+                            writer_object = writer(f_object)
+                            writer_object.writerow(list_data)
+                            writeConsoleFriend(files + " Bilgileri Eklendi")
+                            f_object.close()
+
+                #uploaddan sonra share
+                #print(dbx.sharing_create_shared_link(path=file_folder))
+
+
+                #print(dbx.sharing_share_folder(path=file_folder))
+                #print(dbx.sharing_create_shared_link(path=file_folder))
+
+                fol = dbx.files_get_metadata(path=file_folder, include_deleted=True)
+                print(fol)
+                if isinstance(fol, dropbox.files.FolderMetadata):
+                    try:
+                        print(fol.shared_folder_id)
+                        shared_folder_id=fol.shared_folder_id
+                        print(dbx.sharing_list_folder_members(shared_folder_id=fol.shared_folder_id))
+                    except:
+                        print("*********Girmedi Link Paylaş******************")
+                        print(dbx.sharing_share_folder(path=file_folder,access_inheritance=dropbox.sharing.AccessInheritance.no_inherit))
+                        while(shared_folder_id==None):
+                            print("1 Saniye Beklemede")
+                            time.sleep(1)
+                            #print(dbx.sharing_create_shared_link(path=file_folder))
+                            fol = dbx.files_get_metadata(path=file_folder, include_deleted=True)
+                            if isinstance(fol, dropbox.files.FolderMetadata):
+                                print(fol.shared_folder_id)
+                                shared_folder_id=fol.shared_folder_id
+                        print(dbx.sharing_list_folder_members(shared_folder_id=shared_folder_id))
+                    #selected_group = dropbox.team.GroupsSelector.group_external_ids(['field_research_group_fall_2019'])
+                    sf=dbx.sharing_list_folder_members(shared_folder_id=fol.shared_folder_id)
+                    sf_groups=sf.groups
+                    #sf_groups_group=sf_groups.group
+                    group_id="g:1def07f9850a156c0000000000000003"
+
+                    selected_member = dropbox.sharing.MemberSelector.dropbox_id(team_member_id)
+                    #dbx.files_move_v2(from_path="/mertonur/denemea",to_path="/dropboxapp")
+
+                    print(group_id)
+
+                    OldPermission(maillist,shared_folder_id)
+
+                    #dbx.sharing_update_folder_member(shared_folder_id=shared_folder_id, member=member_access,access_level=selected_access_type)
+
+                    #unshareFolder("dropbox4@haxballplayers.com",dropboxapp_shared_folder_id)
+
+
+                    #selected_group = dropbox.sharing.MemberSelector.dropbox_id(group_id)
+                    #target_access_level = dropbox.sharing.AccessLevel.editor
+
+                    #dbx2 = dropbox.DropboxTeam(tokenid).with_path_root(dropbox.common.PathRoot.root("2678767185")).as_admin(team_member_id)
+                    #dbx.sharing_remove_folder_member(shared_folder_id=shared_folder_id,member=selected_group,leave_a_copy=False)
+                    #SharedFolderMembers(cursor=NOT_SET, groups=[GroupMembershipInfo(access_type=AccessLevel('editor', None), group=GroupInfo(group_external_id=NOT_SET, group_id='g:1def07f9850a156c0000000000000003', group_management_type=GroupManagementType('system_managed', None), group_name='Everyone at AgGuvenligi', group_type=GroupType('team', None), is_member=True, is_owner=False, member_count=3, same_team=True), initials=NOT_SET, is_inherited=True, permissions=NOT_SET)], invitees=[], users=[])
+
+                    #dbx.sharing_update_folder_member(shared_folder_id=fol.id,member=)
+
+
+
+
+                #FolderMetadata(id='id:Bsq8qn8Sd9YAAAAAAAAAEg', name='aa.txt', parent_shared_folder_id='2678767185', path_display='/DropboxApp/aaa/aa.txt', path_lower='/dropboxapp/aaa/aa.txt', property_groups=NOT_SET, shared_folder_id=NOT_SET, sharing_info=FolderSharingInfo(no_access=False, parent_shared_folder_id='2678767185', read_only=False, shared_folder_id=NOT_SET, traverse_only=False))
+
+
+
+
+
             #shareFile(files[8:],"dropbox2@haxballplayers.com","deneme132")
            #shareFile(files[19:],"dropbox2@haxballplayers.com","deneme132")
 
-    for friends in checklistfriends:
-        print("Friends: "+friends)
+
 
     ResetLocalDropbox()
     ResetDropbox()
@@ -988,22 +1219,25 @@ def DownloadDropbox():
     ResetLocalDropbox()
     ResetDropbox()
 
-def UploadFile(file_from,file_to):
+def UploadFile(original_file,crypted_file_content,file_to):
     try:
-
+        crypted_file_content=bytes(crypted_file_content.encode())
         #dbx=dropbox.Dropbox(tokenid)
 
-        mtime = os.path.getmtime(file_from)
+        mtime = os.path.getmtime(original_file)
         #print("Upload")
         #print(mtime)
-        with open(file_from, 'rb') as f:
-            dbx.files_upload(f.read(), file_to,mode=dropbox.files.WriteMode.overwrite,client_modified=datetime.datetime(*time.gmtime(mtime)[:6]))
+        #with open(crypted_file, 'rb') as f:
+        #dbx.files_upload(f.read(), file_to,mode=dropbox.files.WriteMode.overwrite,client_modified=datetime.datetime(*time.gmtime(mtime)[:6]))
+        dbx.files_upload(crypted_file_content, file_to, mode=dropbox.files.WriteMode.overwrite,client_modified=datetime.datetime(*time.gmtime(mtime)[:6]))
 
         writeConsoleMain(file_to+" Upload Successful")
         print(file_to + " Upload Successful")
+        return 1
 
     except Exception as e:
         writeConsoleMain(e)
+        return 0
 
 
 def DownloadFile(file_from):
@@ -1123,6 +1357,7 @@ def Login():
     global  authorization_code
     global tokenid
     global dbx
+    global team_member_id
 
     login=0
     authorization_code=LoginAuthorizationCode.get()
@@ -1165,7 +1400,8 @@ def Login():
         # shared_folder_member_policy=SharedFolderMemberPolicy('anyone', None), shared_link_create_policy=SharedLinkCreatePolicy('default_public', None))),
         # team_member_id='dbmid:AAAPamqUhqmkb33V3tXvMZnO9WDdLxo_3L4')
         dbx.users_get_current_account()
-        mymail = dbx.users_get_current_account().email
+
+        SetMail(dbx.users_get_current_account().email)
         print(mymail + " mymail")
         root_namespace_id = dbx.users_get_current_account().root_info.root_namespace_id
         print(root_namespace_id + " root_namespace_id")
@@ -1422,6 +1658,11 @@ def destroyFriendFrame():
     global FriendFrame
     FriendFrame.destroy()
 
+def SetMail(mail):
+    global mymail
+    mymail=mail
+    sCrypt.SetMail(mail)
+
 
 if __name__ == '__main__':
     #stinfo = os.stat('C:/Users/DropboxApp/aaa/df.py')
@@ -1442,16 +1683,26 @@ if __name__ == '__main__':
     #dbx=dropbox.DropboxTeam(tokenid).with_path_root(dbx.common.PathRoot.root("2580493889")).as_user("dbmid:AAAPamqUhqmkb33V3tXvMZnO9WDdLxo_3L4")
     #print(dbx.files_download_to_file(download_path="C:/Users/celal/Desktop/indiryuklesil/h7.pdf", path="/dropboxapp/h7.pdf"))
     #DownloadFile("/dropboxapp/h7.pdf")
+
+
+
+
+
+    #print(str(datas[1]))
+
+
     createLoginFrame()
+
+
     #dbx.sharing
-    maillist=["asdfas@gmail.com","mert_6198@hotmail.com","mert_1998_61@hotmail.com"]
+    #maillist=["asdfas@gmail.com","mert_6198@hotmail.com","mert_1998_61@hotmail.com"]
     #sCrypt.Asymmetric_Key_Generating()
-    sCrypt.Asymmetric_Key_Reading()
-    key = urandom(16)
-    iv = urandom(16)
-    mac_key = urandom(16)
-    auth = sCrypt.encrypt_then_mac('C:/Users/pc/Desktop/denemee.txt', iv, key, mac_key, 16)
-    print("Auth:" + str(auth))
+    #sCrypt.Asymmetric_Key_Reading()
+    #key = urandom(16)
+    #iv = urandom(16)
+    #mac_key = urandom(16)
+    #auth = sCrypt.encrypt_then_mac('C:/Users/pc/Desktop/denemee.txt', iv, key, mac_key, 16)
+    #print("Auth:" + str(auth))
     #Auth Şifreli Dosya ve doğrulaması
 
     #combine_File = sCrypt.combine_keys(maillist,auth, iv, key, mac_key, sCrypt.blocksize)
@@ -1459,16 +1710,22 @@ if __name__ == '__main__':
     #ths = open("C:/Users/pc/Desktop/denemee_c.txt", "w")
     #ths.write(combine_File),
     #ths.close()
-    combine_File=open('C:/Users/pc/Desktop/denemee_c.txt').read()
-    #Auth(simetrikle şifreli)::::((mail::iv::key::mac_key::blocksize::+soldakilerin private şifreli halinin imzası).Bunun tamamı adamın publici ile şifreli):::():::()
+    #combine_File=open('C:/Users/pc/Desktop/denemee_c.txt').read()
+    #Auth(simetrikle şifreli)::::((mail::iv::key::mac_key::blocksize::+soldakilerin private şifreli halinin imzası).Bunun tamamı karşıdaki kişinin publici ile şifreli):::():::()
 
     #imza=sCrypt.Asymmetric_Sign(combine_File,sCrypt.private_key)
     #sCrypt.Asymmetric_Auth(combine_File,imza,sCrypt.public_key)
 
-    try:
-        print("Sonuç:" + sCrypt.separate_File(combine_File))
-    except:
-        print("Hata !")
+    #try:
+    #    print("Sonuç:" + sCrypt.separate_File(combine_File))
+    #except:
+     #   print("Hata !")
 
-    #root.mainloop()
+
+
+
+
+
+
+    root.mainloop()
 
