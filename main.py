@@ -661,6 +661,12 @@ def listSubfolders(path):
                 sync=0
             if isinstance(f, dropbox.files.DeletedMetadata):
                 print("DeletedMetadata")
+                if os.path.exists(fullname):
+                    print(fullname+" Dosyası Bulutdan Silindiği İçin Otomatik Olarak Silindi")
+                    writeConsoleMain(fullname+" Dosyası Bulutdan Silindiği İçin Otomatik Olarak Silindi")
+                    os.remove(fullname)
+
+
                 sync=4
         except Exception as e:
             sync=3
@@ -692,6 +698,7 @@ def listSubfolders(path):
             treeview.sync3(fullname)
             #Bulunmayan
         if (sync == 4):
+            print(fullname+" Silindi")
             treeview.sync4(fullname)
             #Silinmiş
 
@@ -1187,12 +1194,12 @@ def UploadDropbox():
                     sf=dbx.sharing_list_folder_members(shared_folder_id=fol.shared_folder_id)
                     sf_groups=sf.groups
                     #sf_groups_group=sf_groups.group
-                    group_id="g:1def07f9850a156c0000000000000003"
+                    #group_id="g:1def07f9850a156c0000000000000003"
 
-                    selected_member = dropbox.sharing.MemberSelector.dropbox_id(team_member_id)
+                    #selected_member = dropbox.sharing.MemberSelector.dropbox_id(team_member_id)
                     #dbx.files_move_v2(from_path="/mertonur/denemea",to_path="/dropboxapp")
 
-                    print(group_id)
+                    #print(group_id)
 
                     OldPermission(maillist,shared_folder_id)
 
@@ -1811,6 +1818,7 @@ if __name__ == '__main__':
 
 
     createLoginFrame()
+
 
 
     #dbx.sharing
