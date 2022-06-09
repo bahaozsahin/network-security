@@ -164,8 +164,8 @@ def auth_check(session_cookie, iv, key, mac_key, blocksize):
 	console=""
 
 	if cbc_mac_gen(ciphertext, iv, mac_key, blocksize) == tag:
-		print ("Authentication Successful")
-		console+="Authentication Successful"+"\n"
+		print ("Authentication Başarılı")
+		console+="Authentication Başarılı"+"\n"
 
 		success,original_file,console2= decrypt(ciphertext, iv, key, blocksize)
 		console+=console2
@@ -173,8 +173,8 @@ def auth_check(session_cookie, iv, key, mac_key, blocksize):
 
 
 	else:
-		print ("Authentication Failed")
-		console += "Authentication Failed" + "\n"
+		print ("Authentication Başarısız")
+		console += "Authentication Başarısız" + "\n"
 		return 0, "", console
 
 
